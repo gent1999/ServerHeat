@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ArticleStatus {
+  draft
+  published
+
+  @@map("article_status")
+}
+
+model Author {
+  id         BigInt   @id @default(autoincrement())
+  name       String
+  slug       String   @unique
+  email      String?
+  bio        String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  articles   Article[]
+  adminUsers AdminUser[]
+
+  @@map("authors")
+}
+
+model AdminUser {
+  id           BigInt   @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         String   @default("admin")
+  authorId     BigInt?  @map("author_id")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  author       Author?  @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@map("admin_users")
+}
+
+model Category {
+  id          BigInt   @id @default(autoincrement())
+  name        String
+  slug        String   @unique
+  description String?
+
+  articleCategories ArticleCategory[]
+
+  @@map("categories")
+}
+
+model Tag {
+  id   BigInt @id @default(autoincrement())
+  name String
+  slug String @unique
+
+  articleTags ArticleTag[]
+
+  @@map("tags")
+}
+
+model Media {
+  id         BigInt   @id @default(autoincrement())
+  sourceUrl  String   @map("source_url")
+  localPath  String?  @map("local_path")
+  altText    String?  @map("alt_text")
+  mimeType   String?  @map("mime_type")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  articles   Article[]
+
+  @@map("media")
+}
+
+model Article {
+  id               BigInt        @id @default(autoincrement())
+  title            String
+  slug             String        @unique
+  excerpt          String?
+  content          String
+  status           ArticleStatus @default(published)
+  authorId         BigInt?       @map("author_id")
+  featuredImageId  BigInt?       @map("featured_image_id")
+  publishedAt      DateTime?     @map("published_at") @db.Timestamptz(6)
+  updatedAt        DateTime?     @map("updated_at") @db.Timestamptz(6)
+  seoTitle         String?       @map("seo_title")
+  seoDescription   String?       @map("seo_description")
+  seoFocusKeyword  String?       @map("seo_focus_keyword")
+  canonicalUrl     String?       @map("canonical_url")
+  ogImageUrl       String?       @map("og_image_url")
+  isFeatured       Boolean       @default(false) @map("is_featured")
+  featuredOrder    Int?          @map("featured_order")
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  author           Author?           @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  featuredImage    Media?            @relation(fields: [featuredImageId], references: [id], onDelete: SetNull)
+  articleCategories ArticleCategory[]
+  articleTags      ArticleTag[]
+
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([authorId])
+  @@map("articles")
+}
+
+model ArticleCategory {
+  articleId  BigInt  @map("article_id")
+  categoryId BigInt  @map("category_id")
+  isPrimary  Boolean @default(false) @map("is_primary")
+
+  article  Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, categoryId])
+  @@index([categoryId])
+  @@map("article_categories")
+}
+
+model ArticleTag {
+  articleId BigInt @map("article_id")
+  tagId     BigInt @map("tag_id")
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+  @@index([tagId])
+  @@map("article_tags")
+}
+
+model Redirect {
+  id         BigInt   @id @default(autoincrement())
+  fromPath   String   @unique @map("from_path")
+  toPath     String   @map("to_path")
+  statusCode Int      @default(301) @map("status_code") @db.SmallInt
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("redirects")
+}
