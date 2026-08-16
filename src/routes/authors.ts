@@ -1,5 +1,7 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { requireAuth } from '../middleware/auth';
 import { asyncHandler, HttpError } from '../middleware/error-handler';
 import { paginatedArticlesForRelation } from '../lib/paginate-articles';
 
@@ -21,5 +23,22 @@ authorsRouter.get(
 
     const result = await paginatedArticlesForRelation({ authorId: author.id }, req.query);
     res.json({ author, ...result });
+  })
+);
+
+const authorWriteSchema = z.object({
+  name: z.string().min(1),
+  slug: z.string().min(1).regex(/^[a-z0-9-]+$/),
+});
+
+// POST /api/authors -- admin only. Lets the article form create a byline
+// on the fly by name rather than forcing a pick from a pre-existing list.
+authorsRouter.post(
+  '/',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const data = authorWriteSchema.parse(req.body);
+    const author = await prisma.author.create({ data });
+    res.status(201).json({ author });
   })
 );

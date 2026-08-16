@@ -17,6 +17,9 @@ const listQuerySchema = z.object({
   category: z.string().optional(),
   tag: z.string().optional(),
   status: z.enum(['draft', 'published', 'all']).optional(),
+  // z.coerce.boolean() would treat "false" as truthy (any non-empty
+  // string coerces to true) -- match the literal string instead.
+  isFeatured: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),
 });
 
 // GET /api/articles -- public list. Anonymous callers only ever see
@@ -40,6 +43,9 @@ articlesRouter.get(
     }
     if (query.tag) {
       where.articleTags = { some: { tag: { slug: query.tag } } };
+    }
+    if (query.isFeatured !== undefined) {
+      where.isFeatured = query.isFeatured;
     }
 
     const [total, articles] = await Promise.all([

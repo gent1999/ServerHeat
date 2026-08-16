@@ -8,6 +8,7 @@ import { authorsRouter } from './routes/authors';
 import { redirectsRouter } from './routes/redirects';
 import { authRouter } from './routes/auth';
 import { homeRouter } from './routes/home';
+import { mediaRouter } from './routes/media';
 import { errorHandler } from './middleware/error-handler';
 
 const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -26,5 +27,6 @@ app.use('/api/authors', authorsRouter);
 app.use('/api/redirects', redirectsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/home', homeRouter);
+app.use('/api/media', mediaRouter);
 
 app.use(errorHandler);
