@@ -11,7 +11,8 @@
     "start": "node dist/index.js",
     "seed:admin": "tsx src/scripts/seed-admin.ts",
     "prisma:generate": "prisma generate",
-    "prisma:pull": "prisma db pull"
+    "prisma:pull": "prisma db pull",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",
