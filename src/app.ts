@@ -20,18 +20,6 @@ app.use(express.json({ limit: '2mb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-// Temporary diagnostic -- confirms which DB host this deployment is
-// actually connected to, without exposing credentials. Remove once the
-// Neon connection-string mixup is resolved.
-app.get('/api/_debug/db', (_req, res) => {
-  try {
-    const url = new URL(process.env.DATABASE_URL || '');
-    res.json({ host: url.hostname, database: url.pathname.replace('/', ''), searchParams: url.search });
-  } catch {
-    res.status(500).json({ error: 'could not parse DATABASE_URL' });
-  }
-});
-
 app.use('/api/articles', articlesRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/tags', tagsRouter);
