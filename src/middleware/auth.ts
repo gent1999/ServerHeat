@@ -27,3 +27,14 @@ export function requireAuth(req: AuthedRequest, res: Response, next: NextFunctio
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 }
+
+// Full-admin-only actions (deleting articles, promoting/demoting an
+// article's homepage feature status, creating other admin accounts) --
+// the "editor" role can do everything else requireAuth alone allows.
+// Must run after requireAuth so req.admin is populated.
+export function requireAdminRole(req: AuthedRequest, res: Response, next: NextFunction) {
+  if (req.admin?.role !== 'admin') {
+    return res.status(403).json({ error: 'Only a full admin can do that.' });
+  }
+  next();
+}

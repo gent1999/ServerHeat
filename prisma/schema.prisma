@@ -38,6 +38,7 @@ model AdminUser {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   author       Author?  @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  publishedArticles Article[] @relation("ArticlePublisher")
 
   @@map("admin_users")
 }
@@ -94,10 +95,12 @@ model Article {
   ogImageUrl       String?       @map("og_image_url")
   isFeatured       Boolean       @default(false) @map("is_featured")
   featuredOrder    Int?          @map("featured_order")
+  publishedByAdminId BigInt?     @map("published_by_admin_id")
   createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
   author           Author?           @relation(fields: [authorId], references: [id], onDelete: SetNull)
   featuredImage    Media?            @relation(fields: [featuredImageId], references: [id], onDelete: SetNull)
+  publishedByAdmin AdminUser?        @relation("ArticlePublisher", fields: [publishedByAdminId], references: [id], onDelete: SetNull)
   articleCategories ArticleCategory[]
   articleTags      ArticleTag[]
 

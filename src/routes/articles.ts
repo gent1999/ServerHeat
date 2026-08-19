@@ -1,10 +1,14 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
-import { requireAuth } from '../middleware/auth';
+import { AuthedRequest, requireAuth, requireAdminRole } from '../middleware/auth';
 import { optionalAuth } from '../middleware/optional-auth';
 import { asyncHandler, HttpError } from '../middleware/error-handler';
 import { articleCardSelect, articleDetailSelect } from '../lib/selections';
+
+// Who posted an article is admin-only intelligence (which teammate
+// published what) -- never exposed to anonymous/public requests.
+const publisherSelect = { publishedByAdmin: { select: { id: true, email: true } } } as const;
 
 export const articlesRouter = Router();
 
@@ -52,7 +56,7 @@ articlesRouter.get(
       prisma.article.count({ where }),
       prisma.article.findMany({
         where,
-        select: articleCard,
+        select: isAdmin ? { ...articleCard, ...publisherSelect } : articleCard,
         orderBy: { publishedAt: 'desc' },
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
@@ -72,9 +76,10 @@ articlesRouter.get(
   '/:slug',
   optionalAuth,
   asyncHandler(async (req, res) => {
+    const isAdmin = Boolean(req.admin);
     const article = await prisma.article.findUnique({
       where: { slug: req.params.slug },
-      select: articleDetail,
+      select: isAdmin ? { ...articleDetail, ...publisherSelect } : articleDetail,
     });
     if (!article || (article.status !== 'published' && !req.admin)) {
       throw new HttpError(404, 'Article not found');
@@ -111,12 +116,15 @@ function categoryRelationWrites(categoryIds: number[], primaryCategoryId?: numbe
   }));
 }
 
-// POST /api/articles -- admin only.
+// POST /api/articles -- admin only. Only the "admin" role may set a
+// homepage-featured status on create; an "editor" posting an article
+// always lands unfeatured regardless of what's submitted.
 articlesRouter.post(
   '/',
   requireAuth,
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: AuthedRequest, res) => {
     const data = articleWriteSchema.parse(req.body);
+    const canFeature = req.admin!.role === 'admin';
 
     const article = await prisma.article.create({
       data: {
@@ -133,8 +141,9 @@ articlesRouter.post(
         seoFocusKeyword: data.seoFocusKeyword ?? null,
         canonicalUrl: data.canonicalUrl ?? null,
         ogImageUrl: data.ogImageUrl ?? null,
-        isFeatured: data.isFeatured,
-        featuredOrder: data.featuredOrder ?? null,
+        isFeatured: canFeature ? data.isFeatured : false,
+        featuredOrder: canFeature ? (data.featuredOrder ?? null) : null,
+        publishedByAdminId: req.admin!.id,
         articleCategories: { create: categoryRelationWrites(data.categoryIds, data.primaryCategoryId) },
         articleTags: { create: data.tagIds.map((tagId) => ({ tagId })) },
       },
@@ -145,13 +154,20 @@ articlesRouter.post(
   })
 );
 
-// PUT /api/articles/:id -- admin only.
+// PUT /api/articles/:id -- admin only. Only the "admin" role may change
+// homepage-featured status here (matches the star toggle's own guard,
+// which is the only UI path that's supposed to touch these two fields).
 articlesRouter.put(
   '/:id',
   requireAuth,
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: AuthedRequest, res) => {
     const id = Number(req.params.id);
     const data = articleWriteSchema.partial().parse(req.body);
+    const canFeature = req.admin!.role === 'admin';
+    if (!canFeature) {
+      delete data.isFeatured;
+      delete data.featuredOrder;
+    }
 
     const article = await prisma.$transaction(async (tx) => {
       if (data.categoryIds) {
@@ -193,10 +209,11 @@ articlesRouter.put(
   })
 );
 
-// DELETE /api/articles/:id -- admin only.
+// DELETE /api/articles/:id -- full admin only, not editor.
 articlesRouter.delete(
   '/:id',
   requireAuth,
+  requireAdminRole,
   asyncHandler(async (req, res) => {
     await prisma.article.delete({ where: { id: Number(req.params.id) } });
     res.status(204).send();
