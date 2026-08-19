@@ -26,3 +26,23 @@ mediaRouter.post(
     res.status(201).json({ media });
   })
 );
+
+const mediaUpdateSchema = z.object({
+  sourceUrl: z.string().url().optional(),
+  altText: z.string().nullable().optional(),
+  mimeType: z.string().nullable().optional(),
+});
+
+// PATCH /api/media/:id -- admin only. Repoints an existing media record at a
+// new sourceUrl (used to re-host migrated images without touching the
+// articles that reference them).
+mediaRouter.patch(
+  '/:id',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    const data = mediaUpdateSchema.parse(req.body);
+    const media = await prisma.media.update({ where: { id }, data });
+    res.json({ media });
+  })
+);
