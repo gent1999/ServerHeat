@@ -8,8 +8,14 @@ import { asyncHandler, HttpError } from '../middleware/error-handler';
 
 export const authRouter = Router();
 
+// Emails are matched case-insensitively everywhere in this file (login,
+// create, update) -- real mail providers treat the local part as
+// case-insensitive in practice, and "wrong case" shouldn't read as "wrong
+// password" to someone logging in.
+const emailSchema = z.string().email().transform((v) => v.toLowerCase());
+
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: emailSchema,
   password: z.string().min(1),
 });
 
@@ -50,7 +56,7 @@ authRouter.get(
 );
 
 const createAdminSchema = z.object({
-  email: z.string().email(),
+  email: emailSchema,
   password: z.string().min(8),
   name: z.string().min(1),
   role: z.enum(['admin', 'editor']).default('editor'),
@@ -93,7 +99,7 @@ authRouter.get(
 );
 
 const updateAdminSchema = z.object({
-  email: z.string().email().optional(),
+  email: emailSchema.optional(),
   name: z.string().min(1).optional(),
   role: z.enum(['admin', 'editor']).optional(),
   password: z.string().min(8).optional(),
