@@ -35,6 +35,16 @@ function lastMonthEndISO(): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Start-of-month date N months back -- GA4's dateRanges only accept
+// explicit YYYY-MM-DD, "NdaysAgo", "yesterday", or "today" (no "NmonthsAgo").
+function monthsAgoStartISO(n: number): string {
+  const now = new Date();
+  const targetMonthIndex = now.getUTCMonth() - n;
+  const yearOffset = Math.floor(targetMonthIndex / 12);
+  const normalizedMonth = ((targetMonthIndex % 12) + 12) % 12;
+  return `${now.getUTCFullYear() + yearOffset}-${pad(normalizedMonth + 1)}-01`;
+}
+
 function getAuth() {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const rawKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
@@ -61,7 +71,7 @@ async function fetchGa4(auth: InstanceType<typeof google.auth.JWT>) {
   const runSummary = (startDate: string, endDate: string) =>
     analyticsData.properties.runReport({ property, requestBody: { dateRanges: [{ startDate, endDate }], metrics } });
 
-  const [last7, last30, thisMonth, lastMonth, topPages] = await Promise.all([
+  const [last7, last30, thisMonth, lastMonth, topPages, monthly] = await Promise.all([
     runSummary('7daysAgo', 'today'),
     runSummary('30daysAgo', 'today'),
     runSummary(thisMonthStartISO(), 'today'),
@@ -76,6 +86,18 @@ async function fetchGa4(auth: InstanceType<typeof google.auth.JWT>) {
         limit: '5',
       },
     }),
+    // Month-by-month trend for the Traffic Overview chart -- yearMonth
+    // gives one row per calendar month directly, no need for 12 separate
+    // date-range calls.
+    analyticsData.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges: [{ startDate: monthsAgoStartISO(11), endDate: 'today' }],
+        dimensions: [{ name: 'yearMonth' }],
+        metrics: [{ name: 'sessions' }],
+        orderBys: [{ dimension: { dimensionName: 'yearMonth' } }],
+      },
+    }),
   ]);
 
   const summary = (rows: Ga4Row[] | undefined | null): Ga4Summary => {
@@ -87,6 +109,10 @@ async function fetchGa4(auth: InstanceType<typeof google.auth.JWT>) {
     };
   };
 
+  const MONTH_LABELS = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
   return {
     last7Days: summary(last7.data.rows as Ga4Row[]),
     last30Days: summary(last30.data.rows as Ga4Row[]),
@@ -96,6 +122,16 @@ async function fetchGa4(auth: InstanceType<typeof google.auth.JWT>) {
       path: row.dimensionValues?.[0]?.value ?? '',
       pageviews: Number(row.metricValues?.[0]?.value ?? 0),
     })),
+    monthlyTrend: ((monthly.data.rows as Ga4Row[]) || []).map((row) => {
+      const yearMonth = row.dimensionValues?.[0]?.value ?? '';
+      const year = yearMonth.slice(0, 4);
+      const monthIndex = Number(yearMonth.slice(4, 6)) - 1;
+      return {
+        month: year && yearMonth.length === 6 ? `${year}-${yearMonth.slice(4, 6)}` : yearMonth,
+        label: monthIndex >= 0 && monthIndex < 12 ? `${MONTH_LABELS[monthIndex]} ${year.slice(2)}` : yearMonth,
+        sessions: Number(row.metricValues?.[0]?.value ?? 0),
+      };
+    }),
   };
 }
 
@@ -131,7 +167,7 @@ async function fetchSearchConsole(auth: InstanceType<typeof google.auth.JWT>) {
   const lastMonthEnd = lastMonthEndISO() < lagEnd ? lastMonthEndISO() : lagEnd;
   const thisMonthEnd = lagEnd;
 
-  const [last7, last28, thisMonthRes, lastMonthRes, topQueries] = await Promise.all([
+  const [last7, last28, thisMonthRes, lastMonthRes, topQueries, topPages] = await Promise.all([
     query(daysAgoISO(10), lagEnd),
     query(daysAgoISO(31), lagEnd),
     query(thisMonthStart, thisMonthEnd),
@@ -139,6 +175,10 @@ async function fetchSearchConsole(auth: InstanceType<typeof google.auth.JWT>) {
     searchconsole.searchanalytics.query({
       siteUrl,
       requestBody: { startDate: daysAgoISO(31), endDate: lagEnd, dimensions: ['query'], rowLimit: 5 },
+    }),
+    searchconsole.searchanalytics.query({
+      siteUrl,
+      requestBody: { startDate: daysAgoISO(31), endDate: lagEnd, dimensions: ['page'], rowLimit: 5 },
     }),
   ]);
 
@@ -149,6 +189,13 @@ async function fetchSearchConsole(auth: InstanceType<typeof google.auth.JWT>) {
     lastMonth: lastMonthRes ? summary(lastMonthRes.data.rows) : ZERO_SC_SUMMARY,
     topQueries: (topQueries.data.rows || []).map((row) => ({
       query: row.keys?.[0] ?? '',
+      clicks: row.clicks ?? 0,
+      impressions: row.impressions ?? 0,
+      ctr: row.ctr ?? 0,
+      position: row.position ?? 0,
+    })),
+    topPages: (topPages.data.rows || []).map((row) => ({
+      page: row.keys?.[0] ?? '',
       clicks: row.clicks ?? 0,
       impressions: row.impressions ?? 0,
       ctr: row.ctr ?? 0,
