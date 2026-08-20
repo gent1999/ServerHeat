@@ -1,9 +1,68 @@
 import { Router } from 'express';
 import { google } from 'googleapis';
+import { prisma } from '../lib/prisma';
 import { requireAuth, requireAdminRole } from '../middleware/auth';
 import { asyncHandler, HttpError } from '../middleware/error-handler';
 
 export const analyticsRouter = Router();
+
+const SEO_STATS_CACHE_HOURS = 24;
+
+// Moz's free API tier is capped at 50 rows/month, so this is cached in the
+// database and only re-fetched once the cache is stale -- never on every
+// dashboard load. Falls back to a stale cache entry (flagged as such)
+// rather than erroring if a fresh Moz call fails.
+async function fetchSeoStats() {
+  const domain = process.env.SEO_STATS_DOMAIN;
+  const token = process.env.MOZ_API_TOKEN;
+  if (!domain || !token) return null;
+
+  const cached = await prisma.seoStatsCache.findUnique({ where: { domain } });
+  const cacheAgeHours = cached ? (Date.now() - cached.fetchedAt.getTime()) / (1000 * 60 * 60) : Infinity;
+
+  if (cached && cacheAgeHours < SEO_STATS_CACHE_HOURS) {
+    return { ...cached, stale: false };
+  }
+
+  try {
+    const res = await fetch('https://lsapi.seomoz.com/v2/url_metrics', {
+      method: 'POST',
+      headers: { Authorization: `Basic ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targets: [`https://${domain}/`] }),
+    });
+    if (!res.ok) throw new Error(`Moz API responded with ${res.status}`);
+    const data = (await res.json()) as { results?: Record<string, number>[] };
+    const result = data.results?.[0];
+    if (!result) throw new Error('Moz API returned no results');
+
+    const fresh = await prisma.seoStatsCache.upsert({
+      where: { domain },
+      create: {
+        domain,
+        domainAuthority: result.domain_authority ?? null,
+        pageAuthority: result.page_authority ?? null,
+        spamScore: result.spam_score ?? null,
+        linkingRootDomains: result.root_domains_to_root_domain ?? null,
+        externalBacklinks: result.external_pages_to_root_domain ?? null,
+        fetchedAt: new Date(),
+      },
+      update: {
+        domainAuthority: result.domain_authority ?? null,
+        pageAuthority: result.page_authority ?? null,
+        spamScore: result.spam_score ?? null,
+        linkingRootDomains: result.root_domains_to_root_domain ?? null,
+        externalBacklinks: result.external_pages_to_root_domain ?? null,
+        fetchedAt: new Date(),
+      },
+    });
+    return { ...fresh, stale: false };
+  } catch (err) {
+    // A stale cached value beats no value at all -- Moz's quota is scarce
+    // enough that a transient failure shouldn't blank out the widget.
+    if (cached) return { ...cached, stale: true };
+    throw err;
+  }
+}
 
 function daysAgoISO(n: number): string {
   const d = new Date();
@@ -218,7 +277,11 @@ analyticsRouter.get(
       return;
     }
 
-    const [analyticsResult, searchConsoleResult] = await Promise.allSettled([fetchGa4(auth), fetchSearchConsole(auth)]);
+    const [analyticsResult, searchConsoleResult, seoStatsResult] = await Promise.allSettled([
+      fetchGa4(auth),
+      fetchSearchConsole(auth),
+      fetchSeoStats(),
+    ]);
 
     res.json({
       analytics: analyticsResult.status === 'fulfilled' ? analyticsResult.value : null,
@@ -226,6 +289,8 @@ analyticsRouter.get(
       searchConsole: searchConsoleResult.status === 'fulfilled' ? searchConsoleResult.value : null,
       searchConsoleError:
         searchConsoleResult.status === 'rejected' ? String(searchConsoleResult.reason?.message || searchConsoleResult.reason) : null,
+      seoStats: seoStatsResult.status === 'fulfilled' ? seoStatsResult.value : null,
+      seoStatsError: seoStatsResult.status === 'rejected' ? String(seoStatsResult.reason?.message || seoStatsResult.reason) : null,
     });
   })
 );

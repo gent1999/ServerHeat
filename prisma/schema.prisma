@@ -143,3 +143,19 @@ model Redirect {
 
   @@map("redirects")
 }
+
+// Cached Moz domain-authority-style metrics. The free Moz API tier only
+// allows 50 rows/month, so we refresh this on a timer (see analytics.ts)
+// instead of calling Moz on every dashboard load.
+model SeoStatsCache {
+  id                 BigInt   @id @default(autoincrement())
+  domain             String   @unique
+  domainAuthority    Float?   @map("domain_authority")
+  pageAuthority      Float?   @map("page_authority")
+  spamScore          Float?   @map("spam_score")
+  linkingRootDomains Int?     @map("linking_root_domains")
+  externalBacklinks  Int?     @map("external_backlinks")
+  fetchedAt          DateTime @map("fetched_at") @db.Timestamptz(6)
+
+  @@map("seo_stats_cache")
+}
