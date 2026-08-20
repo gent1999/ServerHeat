@@ -26,6 +26,7 @@ export const articleDetailSelect = {
   seoFocusKeyword: true,
   canonicalUrl: true,
   ogImageUrl: true,
+  spotifyUrl: true,
   articleTags: { select: { tag: { select: { id: true, name: true, slug: true } } } },
   galleryImages: {
     select: { media: { select: { id: true, sourceUrl: true, altText: true } } },

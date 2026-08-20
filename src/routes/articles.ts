@@ -102,6 +102,11 @@ const articleWriteSchema = z.object({
   seoFocusKeyword: z.string().nullable().optional(),
   canonicalUrl: z.string().nullable().optional(),
   ogImageUrl: z.string().nullable().optional(),
+  spotifyUrl: z
+    .string()
+    .regex(/^https:\/\/open\.spotify\.com\/(track|album|playlist|episode|show|artist)\/[A-Za-z0-9]+/, 'Not a Spotify link')
+    .nullable()
+    .optional(),
   isFeatured: z.boolean().default(false),
   featuredOrder: z.number().int().nullable().optional(),
   categoryIds: z.array(z.number().int()).default([]),
@@ -146,6 +151,7 @@ articlesRouter.post(
         seoFocusKeyword: data.seoFocusKeyword ?? null,
         canonicalUrl: data.canonicalUrl ?? null,
         ogImageUrl: data.ogImageUrl ?? null,
+        spotifyUrl: data.spotifyUrl ?? null,
         isFeatured: canFeature ? data.isFeatured : false,
         featuredOrder: canFeature ? (data.featuredOrder ?? null) : null,
         publishedByAdminId: req.admin!.id,
@@ -209,6 +215,7 @@ articlesRouter.put(
           ...(data.seoFocusKeyword !== undefined && { seoFocusKeyword: data.seoFocusKeyword }),
           ...(data.canonicalUrl !== undefined && { canonicalUrl: data.canonicalUrl }),
           ...(data.ogImageUrl !== undefined && { ogImageUrl: data.ogImageUrl }),
+          ...(data.spotifyUrl !== undefined && { spotifyUrl: data.spotifyUrl }),
           ...(data.isFeatured !== undefined && { isFeatured: data.isFeatured }),
           ...(data.featuredOrder !== undefined && { featuredOrder: data.featuredOrder }),
           updatedAt: new Date(),
