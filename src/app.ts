@@ -9,6 +9,7 @@ import { redirectsRouter } from './routes/redirects';
 import { authRouter } from './routes/auth';
 import { homeRouter } from './routes/home';
 import { mediaRouter } from './routes/media';
+import { analyticsRouter } from './routes/analytics';
 import { errorHandler } from './middleware/error-handler';
 
 const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -28,5 +29,6 @@ app.use('/api/redirects', redirectsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/home', homeRouter);
 app.use('/api/media', mediaRouter);
+app.use('/api/analytics', analyticsRouter);
 
 app.use(errorHandler);
