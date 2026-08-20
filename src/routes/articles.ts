@@ -107,6 +107,16 @@ const articleWriteSchema = z.object({
     .regex(/^https:\/\/open\.spotify\.com\/(track|album|playlist|episode|show|artist)\/[A-Za-z0-9]+/, 'Not a Spotify link')
     .nullable()
     .optional(),
+  soundcloudUrl: z
+    .string()
+    .regex(/^https:\/\/(www\.|m\.)?soundcloud\.com\/.+/, 'Not a SoundCloud link')
+    .nullable()
+    .optional(),
+  youtubeUrl: z
+    .string()
+    .regex(/^https:\/\/(www\.)?(youtube\.com|youtu\.be)\/.+/, 'Not a YouTube link')
+    .nullable()
+    .optional(),
   isFeatured: z.boolean().default(false),
   featuredOrder: z.number().int().nullable().optional(),
   categoryIds: z.array(z.number().int()).default([]),
@@ -152,6 +162,8 @@ articlesRouter.post(
         canonicalUrl: data.canonicalUrl ?? null,
         ogImageUrl: data.ogImageUrl ?? null,
         spotifyUrl: data.spotifyUrl ?? null,
+        soundcloudUrl: data.soundcloudUrl ?? null,
+        youtubeUrl: data.youtubeUrl ?? null,
         isFeatured: canFeature ? data.isFeatured : false,
         featuredOrder: canFeature ? (data.featuredOrder ?? null) : null,
         publishedByAdminId: req.admin!.id,
@@ -216,6 +228,8 @@ articlesRouter.put(
           ...(data.canonicalUrl !== undefined && { canonicalUrl: data.canonicalUrl }),
           ...(data.ogImageUrl !== undefined && { ogImageUrl: data.ogImageUrl }),
           ...(data.spotifyUrl !== undefined && { spotifyUrl: data.spotifyUrl }),
+          ...(data.soundcloudUrl !== undefined && { soundcloudUrl: data.soundcloudUrl }),
+          ...(data.youtubeUrl !== undefined && { youtubeUrl: data.youtubeUrl }),
           ...(data.isFeatured !== undefined && { isFeatured: data.isFeatured }),
           ...(data.featuredOrder !== undefined && { featuredOrder: data.featuredOrder }),
           updatedAt: new Date(),

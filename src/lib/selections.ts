@@ -27,6 +27,8 @@ export const articleDetailSelect = {
   canonicalUrl: true,
   ogImageUrl: true,
   spotifyUrl: true,
+  soundcloudUrl: true,
+  youtubeUrl: true,
   articleTags: { select: { tag: { select: { id: true, name: true, slug: true } } } },
   galleryImages: {
     select: { media: { select: { id: true, sourceUrl: true, altText: true } } },

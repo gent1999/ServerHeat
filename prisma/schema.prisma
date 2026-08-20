@@ -95,6 +95,8 @@ model Article {
   canonicalUrl     String?       @map("canonical_url")
   ogImageUrl       String?       @map("og_image_url")
   spotifyUrl       String?       @map("spotify_url")
+  soundcloudUrl    String?       @map("soundcloud_url")
+  youtubeUrl       String?       @map("youtube_url")
   isFeatured       Boolean       @default(false) @map("is_featured")
   featuredOrder    Int?          @map("featured_order")
   publishedByAdminId BigInt?     @map("published_by_admin_id")
