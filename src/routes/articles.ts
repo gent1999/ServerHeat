@@ -107,6 +107,7 @@ const articleWriteSchema = z.object({
   categoryIds: z.array(z.number().int()).default([]),
   primaryCategoryId: z.number().int().nullable().optional(),
   tagIds: z.array(z.number().int()).default([]),
+  galleryImageIds: z.array(z.number().int()).max(3, 'At most 3 extra photos').default([]),
 });
 
 function categoryRelationWrites(categoryIds: number[], primaryCategoryId?: number | null) {
@@ -114,6 +115,10 @@ function categoryRelationWrites(categoryIds: number[], primaryCategoryId?: numbe
     categoryId,
     isPrimary: categoryId === primaryCategoryId,
   }));
+}
+
+function galleryRelationWrites(mediaIds: number[]) {
+  return mediaIds.map((mediaId, position) => ({ mediaId, position }));
 }
 
 // POST /api/articles -- admin only. Only the "admin" role may set a
@@ -146,6 +151,7 @@ articlesRouter.post(
         publishedByAdminId: req.admin!.id,
         articleCategories: { create: categoryRelationWrites(data.categoryIds, data.primaryCategoryId) },
         articleTags: { create: data.tagIds.map((tagId) => ({ tagId })) },
+        galleryImages: { create: galleryRelationWrites(data.galleryImageIds) },
       },
       select: articleDetail,
     });
@@ -179,6 +185,12 @@ articlesRouter.put(
       if (data.tagIds) {
         await tx.articleTag.deleteMany({ where: { articleId: id } });
         await tx.articleTag.createMany({ data: data.tagIds.map((tagId) => ({ articleId: id, tagId })) });
+      }
+      if (data.galleryImageIds) {
+        await tx.articleGalleryImage.deleteMany({ where: { articleId: id } });
+        await tx.articleGalleryImage.createMany({
+          data: galleryRelationWrites(data.galleryImageIds).map((g) => ({ articleId: id, ...g })),
+        });
       }
 
       return tx.article.update({

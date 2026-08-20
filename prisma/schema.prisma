@@ -73,6 +73,7 @@ model Media {
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   articles   Article[]
+  galleryOf  ArticleGalleryImage[]
 
   @@map("media")
 }
@@ -103,10 +104,28 @@ model Article {
   publishedByAdmin AdminUser?        @relation("ArticlePublisher", fields: [publishedByAdminId], references: [id], onDelete: SetNull)
   articleCategories ArticleCategory[]
   articleTags      ArticleTag[]
+  galleryImages    ArticleGalleryImage[]
 
   @@index([status, publishedAt(sort: Desc)])
   @@index([authorId])
   @@map("articles")
+}
+
+// Up to 3 extra images shown at the bottom of an article, separate from
+// the featured/cover image. Capped at 3 by application logic (POST/PUT
+// /api/articles), not by the schema, so the limit can change later
+// without another migration.
+model ArticleGalleryImage {
+  articleId BigInt @map("article_id")
+  mediaId   BigInt @map("media_id")
+  position  Int    @default(0)
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  media   Media   @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, mediaId])
+  @@index([articleId])
+  @@map("article_gallery_images")
 }
 
 model ArticleCategory {
