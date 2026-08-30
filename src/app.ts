@@ -10,6 +10,7 @@ import { authRouter } from './routes/auth';
 import { homeRouter } from './routes/home';
 import { mediaRouter } from './routes/media';
 import { analyticsRouter } from './routes/analytics';
+import { settingsRouter } from './routes/settings';
 import { errorHandler } from './middleware/error-handler';
 
 const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -30,5 +31,6 @@ app.use('/api/auth', authRouter);
 app.use('/api/home', homeRouter);
 app.use('/api/media', mediaRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/settings', settingsRouter);
 
 app.use(errorHandler);

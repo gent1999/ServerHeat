@@ -181,3 +181,14 @@ model SeoStatsCache {
 
   @@map("seo_stats_cache")
 }
+
+// Single-row table for site-wide (not per-article) settings -- currently
+// just the homepage Spotify playlist embed, but a natural home for any
+// future sitewide config without another schema change.
+model SiteSettings {
+  id                        Int      @id @default(1)
+  homepageSpotifyPlaylistUrl String? @map("homepage_spotify_playlist_url")
+  updatedAt                 DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("site_settings")
+}
