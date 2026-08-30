@@ -11,7 +11,6 @@ export const articleCardSelect = {
   updatedAt: true,
   isFeatured: true,
   featuredOrder: true,
-  editorialType: true,
   isTrending: true,
   isEditorsPick: true,
   author: { select: { id: true, name: true, slug: true } },
@@ -19,6 +18,7 @@ export const articleCardSelect = {
   articleCategories: {
     select: { isPrimary: true, category: { select: { id: true, name: true, slug: true } } },
   },
+  articleEditorialTypes: { select: { editorialType: true } },
 } as const;
 
 export const articleDetailSelect = {

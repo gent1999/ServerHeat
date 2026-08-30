@@ -62,7 +62,7 @@ articlesRouter.get(
       where.isEditorsPick = query.isEditorsPick;
     }
     if (query.editorialType) {
-      where.editorialType = query.editorialType;
+      where.articleEditorialTypes = { some: { editorialType: query.editorialType } };
     }
 
     const [total, articles] = await Promise.all([
@@ -132,7 +132,7 @@ const articleWriteSchema = z.object({
     .optional(),
   isFeatured: z.boolean().default(false),
   featuredOrder: z.number().int().nullable().optional(),
-  editorialType: z.enum(EDITORIAL_TYPES).nullable().optional(),
+  editorialTypes: z.array(z.enum(EDITORIAL_TYPES)).default([]),
   isTrending: z.boolean().default(false),
   isEditorsPick: z.boolean().default(false),
   categoryIds: z.array(z.number().int()).default([]),
@@ -182,12 +182,12 @@ articlesRouter.post(
         youtubeUrl: data.youtubeUrl ?? null,
         isFeatured: canFeature ? data.isFeatured : false,
         featuredOrder: canFeature ? (data.featuredOrder ?? null) : null,
-        editorialType: data.editorialType ?? null,
         isTrending: data.isTrending,
         isEditorsPick: data.isEditorsPick,
         publishedByAdminId: req.admin!.id,
         articleCategories: { create: categoryRelationWrites(data.categoryIds, data.primaryCategoryId) },
         articleTags: { create: data.tagIds.map((tagId) => ({ tagId })) },
+        articleEditorialTypes: { create: data.editorialTypes.map((editorialType) => ({ editorialType })) },
         galleryImages: { create: galleryRelationWrites(data.galleryImageIds) },
       },
       select: articleDetail,
@@ -229,6 +229,12 @@ articlesRouter.put(
           data: galleryRelationWrites(data.galleryImageIds).map((g) => ({ articleId: id, ...g })),
         });
       }
+      if (data.editorialTypes) {
+        await tx.articleEditorialType.deleteMany({ where: { articleId: id } });
+        await tx.articleEditorialType.createMany({
+          data: data.editorialTypes.map((editorialType) => ({ articleId: id, editorialType })),
+        });
+      }
 
       return tx.article.update({
         where: { id },
@@ -251,7 +257,6 @@ articlesRouter.put(
           ...(data.youtubeUrl !== undefined && { youtubeUrl: data.youtubeUrl }),
           ...(data.isFeatured !== undefined && { isFeatured: data.isFeatured }),
           ...(data.featuredOrder !== undefined && { featuredOrder: data.featuredOrder }),
-          ...(data.editorialType !== undefined && { editorialType: data.editorialType }),
           ...(data.isTrending !== undefined && { isTrending: data.isTrending }),
           ...(data.isEditorsPick !== undefined && { isEditorsPick: data.isEditorsPick }),
           updatedAt: new Date(),

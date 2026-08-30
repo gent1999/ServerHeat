@@ -59,7 +59,7 @@ homeRouter.get(
       const articles = await prisma.article.findMany({
         where: {
           status: 'published',
-          editorialType: { in: editorialTypes },
+          articleEditorialTypes: { some: { editorialType: { in: editorialTypes } } },
           id: { notIn: [...usedIds] },
         },
         select: articleCardSelect,
@@ -99,7 +99,7 @@ homeRouter.get(
     let mostHeated = trending;
     if (mostHeated.length < query.sectionCount) {
       const filler = await prisma.article.findMany({
-        where: { status: 'published', editorialType: { not: null }, id: { notIn: [...usedIds] } },
+        where: { status: 'published', articleEditorialTypes: { some: {} }, id: { notIn: [...usedIds] } },
         select: articleCardSelect,
         orderBy: { publishedAt: 'desc' },
         take: query.sectionCount - mostHeated.length,
