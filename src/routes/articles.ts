@@ -5,6 +5,7 @@ import { AuthedRequest, requireAuth, requireAdminRole } from '../middleware/auth
 import { optionalAuth } from '../middleware/optional-auth';
 import { asyncHandler, HttpError } from '../middleware/error-handler';
 import { articleCardSelect, articleDetailSelect } from '../lib/selections';
+import { EDITORIAL_TYPES } from '../lib/editorial-types';
 
 // Who posted an article is admin-only intelligence (which teammate
 // published what) -- never exposed to anonymous/public requests.
@@ -24,6 +25,9 @@ const listQuerySchema = z.object({
   // z.coerce.boolean() would treat "false" as truthy (any non-empty
   // string coerces to true) -- match the literal string instead.
   isFeatured: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),
+  isTrending: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),
+  isEditorsPick: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),
+  editorialType: z.enum(EDITORIAL_TYPES).optional(),
 });
 
 // GET /api/articles -- public list. Anonymous callers only ever see
@@ -50,6 +54,15 @@ articlesRouter.get(
     }
     if (query.isFeatured !== undefined) {
       where.isFeatured = query.isFeatured;
+    }
+    if (query.isTrending !== undefined) {
+      where.isTrending = query.isTrending;
+    }
+    if (query.isEditorsPick !== undefined) {
+      where.isEditorsPick = query.isEditorsPick;
+    }
+    if (query.editorialType) {
+      where.editorialType = query.editorialType;
     }
 
     const [total, articles] = await Promise.all([
@@ -119,6 +132,9 @@ const articleWriteSchema = z.object({
     .optional(),
   isFeatured: z.boolean().default(false),
   featuredOrder: z.number().int().nullable().optional(),
+  editorialType: z.enum(EDITORIAL_TYPES).nullable().optional(),
+  isTrending: z.boolean().default(false),
+  isEditorsPick: z.boolean().default(false),
   categoryIds: z.array(z.number().int()).default([]),
   primaryCategoryId: z.number().int().nullable().optional(),
   tagIds: z.array(z.number().int()).default([]),
@@ -166,6 +182,9 @@ articlesRouter.post(
         youtubeUrl: data.youtubeUrl ?? null,
         isFeatured: canFeature ? data.isFeatured : false,
         featuredOrder: canFeature ? (data.featuredOrder ?? null) : null,
+        editorialType: data.editorialType ?? null,
+        isTrending: data.isTrending,
+        isEditorsPick: data.isEditorsPick,
         publishedByAdminId: req.admin!.id,
         articleCategories: { create: categoryRelationWrites(data.categoryIds, data.primaryCategoryId) },
         articleTags: { create: data.tagIds.map((tagId) => ({ tagId })) },
@@ -232,6 +251,9 @@ articlesRouter.put(
           ...(data.youtubeUrl !== undefined && { youtubeUrl: data.youtubeUrl }),
           ...(data.isFeatured !== undefined && { isFeatured: data.isFeatured }),
           ...(data.featuredOrder !== undefined && { featuredOrder: data.featuredOrder }),
+          ...(data.editorialType !== undefined && { editorialType: data.editorialType }),
+          ...(data.isTrending !== undefined && { isTrending: data.isTrending }),
+          ...(data.isEditorsPick !== undefined && { isEditorsPick: data.isEditorsPick }),
           updatedAt: new Date(),
         },
         select: articleDetail,

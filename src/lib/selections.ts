@@ -11,6 +11,9 @@ export const articleCardSelect = {
   updatedAt: true,
   isFeatured: true,
   featuredOrder: true,
+  editorialType: true,
+  isTrending: true,
+  isEditorsPick: true,
   author: { select: { id: true, name: true, slug: true } },
   featuredImage: { select: { id: true, sourceUrl: true, altText: true } },
   articleCategories: {

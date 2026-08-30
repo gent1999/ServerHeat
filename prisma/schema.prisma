@@ -14,6 +14,25 @@ enum ArticleStatus {
   @@map("article_status")
 }
 
+// Editorial classification layered on top of the existing (legacy)
+// Category system -- lets an article be tagged as e.g. "Music" + "Interview"
+// without touching how categories work. Nullable everywhere: legacy
+// articles have no editorial type and are never backfilled with one.
+enum EditorialType {
+  INTERVIEW
+  ARTIST_SPOTLIGHT
+  MUSIC_REVIEW
+  NEW_RELEASE
+  MUSIC_NEWS
+  FASHION
+  STREETWEAR
+  BRAND_SPOTLIGHT
+  CULTURE
+  OTHER
+
+  @@map("editorial_type")
+}
+
 model Author {
   id         BigInt   @id @default(autoincrement())
   name       String
@@ -99,6 +118,9 @@ model Article {
   youtubeUrl       String?       @map("youtube_url")
   isFeatured       Boolean       @default(false) @map("is_featured")
   featuredOrder    Int?          @map("featured_order")
+  editorialType    EditorialType? @map("editorial_type")
+  isTrending       Boolean       @default(false) @map("is_trending")
+  isEditorsPick    Boolean       @default(false) @map("is_editors_pick")
   publishedByAdminId BigInt?     @map("published_by_admin_id")
   createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -111,6 +133,7 @@ model Article {
 
   @@index([status, publishedAt(sort: Desc)])
   @@index([authorId])
+  @@index([editorialType, status, publishedAt(sort: Desc)])
   @@map("articles")
 }
 
