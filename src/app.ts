@@ -11,7 +11,6 @@ import { homeRouter } from './routes/home';
 import { mediaRouter } from './routes/media';
 import { analyticsRouter } from './routes/analytics';
 import { settingsRouter } from './routes/settings';
-import { maintenanceRouter } from './routes/maintenance';
 import { errorHandler } from './middleware/error-handler';
 
 const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -33,6 +32,5 @@ app.use('/api/home', homeRouter);
 app.use('/api/media', mediaRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/settings', settingsRouter);
-app.use('/api/maintenance', maintenanceRouter);
 
 app.use(errorHandler);
