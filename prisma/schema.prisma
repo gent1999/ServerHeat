@@ -230,3 +230,138 @@ model SiteSettings {
 
   @@map("site_settings")
 }
+
+// ---------------------------------------------------------------------------
+// Finance -- a simple revenue/expense command center for this one site.
+// Single-tenant by design: no site/tenant column, this database only ever
+// serves ArtistHeat's own finances.
+
+enum FeeType {
+  none
+  percentage
+  fixed
+
+  @@map("fee_type")
+}
+
+enum SourceStatus {
+  active
+  pending
+  inactive
+
+  @@map("source_status")
+}
+
+enum RevenuePaymentStatus {
+  pending
+  paid
+  cancelled
+
+  @@map("revenue_payment_status")
+}
+
+enum PayoutStatus {
+  not_ready
+  ready_for_payout
+  paid_out
+
+  @@map("payout_status")
+}
+
+enum ExpenseCategory {
+  domain
+  hosting
+  software
+  ads
+  other
+
+  @@map("expense_category")
+}
+
+enum BillingCycle {
+  one_time
+  monthly
+  yearly
+
+  @@map("billing_cycle")
+}
+
+enum ExpensePaymentStatus {
+  paid
+  pending
+
+  @@map("expense_payment_status")
+}
+
+model RevenueSource {
+  id              BigInt       @id @default(autoincrement())
+  name            String
+  type            String       @default("manual")
+  defaultGross    Decimal      @default(0) @map("default_gross") @db.Decimal(12, 2)
+  feeType         FeeType      @default(none) @map("fee_type")
+  feeValue        Decimal      @default(0) @map("fee_value") @db.Decimal(12, 2)
+  payoutThreshold Decimal      @default(0) @map("payout_threshold") @db.Decimal(12, 2)
+  status          SourceStatus @default(active)
+  notes           String?
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  entries RevenueEntry[]
+  payouts Payout[]
+
+  @@map("revenue_sources")
+}
+
+model RevenueEntry {
+  id            BigInt                @id @default(autoincrement())
+  date          DateTime              @default(now()) @db.Date
+  sourceId      BigInt?               @map("source_id")
+  articleTitle  String?               @map("article_title")
+  articleUrl    String?               @map("article_url")
+  clientName    String?               @map("client_name")
+  grossAmount   Decimal               @map("gross_amount") @db.Decimal(12, 2)
+  feeAmount     Decimal               @default(0) @map("fee_amount") @db.Decimal(12, 2)
+  netAmount     Decimal               @default(0) @map("net_amount") @db.Decimal(12, 2)
+  paymentStatus RevenuePaymentStatus  @default(pending) @map("payment_status")
+  payoutStatus  PayoutStatus          @default(not_ready) @map("payout_status")
+  notes         String?
+  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  source RevenueSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  @@index([sourceId])
+  @@index([date])
+  @@map("revenue_entries")
+}
+
+model Payout {
+  id        BigInt   @id @default(autoincrement())
+  sourceId  BigInt?  @map("source_id")
+  amount    Decimal  @db.Decimal(12, 2)
+  date      DateTime @default(now()) @db.Date
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  source RevenueSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  @@index([sourceId])
+  @@map("payouts")
+}
+
+model Expense {
+  id            BigInt               @id @default(autoincrement())
+  name          String
+  category      ExpenseCategory      @default(other)
+  amount        Decimal              @db.Decimal(12, 2)
+  billingCycle  BillingCycle         @default(one_time) @map("billing_cycle")
+  vendor        String?
+  renewalDate   DateTime?            @map("renewal_date") @db.Date
+  paymentStatus ExpensePaymentStatus @default(paid) @map("payment_status")
+  notes         String?
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([renewalDate])
+  @@map("expenses")
+}
