@@ -46,6 +46,10 @@ const expenseWriteSchema = z.object({
   renewalDate: z.string().nullable().optional(),
   paymentStatus: z.enum(['paid', 'pending']).default('paid'),
   notes: z.string().nullable().optional(),
+  // The effective/incurred date -- there's no separate date column (see the
+  // schema note on Expense), it's stored as createdAt. Optional so a plain
+  // POST with nothing supplied still defaults to "now", same as before.
+  date: z.string().optional(),
 });
 
 financeExpensesRouter.post(
@@ -63,6 +67,7 @@ financeExpensesRouter.post(
         renewalDate: data.renewalDate ? new Date(data.renewalDate) : null,
         paymentStatus: data.paymentStatus,
         notes: data.notes ?? null,
+        createdAt: data.date ? new Date(data.date) : new Date(),
       },
     });
     res.status(201).json({ expense });
@@ -89,6 +94,7 @@ financeExpensesRouter.put(
         ...(data.renewalDate !== undefined && { renewalDate: data.renewalDate ? new Date(data.renewalDate) : null }),
         ...(data.paymentStatus !== undefined && { paymentStatus: data.paymentStatus }),
         ...(data.notes !== undefined && { notes: data.notes }),
+        ...(data.date !== undefined && { createdAt: new Date(data.date) }),
         updatedAt: new Date(),
       },
     });
