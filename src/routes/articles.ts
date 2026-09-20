@@ -212,7 +212,23 @@ articlesRouter.put(
       delete data.featuredOrder;
     }
 
+    const existing = await prisma.article.findUnique({ where: { id }, select: { slug: true } });
+    if (!existing) throw new HttpError(404, 'Article not found');
+
     const article = await prisma.$transaction(async (tx) => {
+      // A slug change breaks any link already shared/indexed under the old
+      // one -- redirect it rather than letting it silently 404 (or, worse,
+      // fall through to the site's generic homepage metadata on a share
+      // embed). upsert so re-editing the slug back and forth never trips
+      // the fromPath unique constraint.
+      if (data.slug !== undefined && data.slug !== existing.slug) {
+        await tx.redirect.upsert({
+          where: { fromPath: `/${existing.slug}` },
+          create: { fromPath: `/${existing.slug}`, toPath: `/${data.slug}`, statusCode: 301 },
+          update: { toPath: `/${data.slug}`, statusCode: 301 },
+        });
+      }
+
       if (data.categoryIds) {
         await tx.articleCategory.deleteMany({ where: { articleId: id } });
         await tx.articleCategory.createMany({
