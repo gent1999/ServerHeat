@@ -12,7 +12,7 @@
     "seed:admin": "tsx src/scripts/seed-admin.ts",
     "prisma:generate": "prisma generate",
     "prisma:pull": "prisma db pull",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate && prisma db push --skip-generate"
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",
