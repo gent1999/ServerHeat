@@ -250,9 +250,14 @@ newsletterRouter.post(
 const sendSchema = z.object({
   subject: z.string().trim().min(1),
   imageUrl: z.string().trim().min(1),
+  // .nullable() matters here, not just .optional() -- the admin form
+  // always sends introText as `null` (never omits the key) when left
+  // blank, and zod's .optional() alone only accepts `undefined`, not an
+  // explicit `null`.
   introText: z
     .string()
     .trim()
+    .nullable()
     .optional()
     .transform((v) => v || null),
   isTest: z.boolean().default(false),
