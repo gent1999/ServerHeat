@@ -12,6 +12,7 @@ import { mediaRouter } from './routes/media';
 import { analyticsRouter } from './routes/analytics';
 import { settingsRouter } from './routes/settings';
 import { financeRouter } from './routes/finance';
+import { newsletterRouter } from './routes/newsletter';
 import { errorHandler } from './middleware/error-handler';
 
 const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -34,5 +35,6 @@ app.use('/api/media', mediaRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/finance', financeRouter);
+app.use('/api/newsletter', newsletterRouter);
 
 app.use(errorHandler);
