@@ -13,6 +13,7 @@ import { analyticsRouter } from './routes/analytics';
 import { settingsRouter } from './routes/settings';
 import { financeRouter } from './routes/finance';
 import { newsletterRouter } from './routes/newsletter';
+import { adsRouter } from './routes/ads';
 import { errorHandler } from './middleware/error-handler';
 
 const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -36,5 +37,6 @@ app.use('/api/analytics', analyticsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/finance', financeRouter);
 app.use('/api/newsletter', newsletterRouter);
+app.use('/api/ads', adsRouter);
 
 app.use(errorHandler);

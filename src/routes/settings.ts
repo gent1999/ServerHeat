@@ -14,7 +14,12 @@ settingsRouter.get(
   '/',
   asyncHandler(async (_req, res) => {
     const settings = await prisma.siteSettings.findUnique({ where: { id: SETTINGS_ID } });
-    res.json({ settings: { homepageSpotifyPlaylistUrl: settings?.homepageSpotifyPlaylistUrl ?? null } });
+    res.json({
+      settings: {
+        homepageSpotifyPlaylistUrl: settings?.homepageSpotifyPlaylistUrl ?? null,
+        adsEnabled: settings?.adsEnabled ?? false,
+      },
+    });
   })
 );
 
@@ -24,6 +29,7 @@ const updateSettingsSchema = z.object({
     .regex(/^https:\/\/open\.spotify\.com\/(track|album|playlist|episode|show|artist)\/[A-Za-z0-9]+/, 'Not a Spotify link')
     .nullable()
     .optional(),
+  adsEnabled: z.boolean().optional(),
 });
 
 // PUT /api/settings -- any authenticated admin-panel account (admin or
@@ -34,11 +40,20 @@ settingsRouter.put(
   requireAuth,
   asyncHandler(async (req, res) => {
     const data = updateSettingsSchema.parse(req.body);
+    const existing = await prisma.siteSettings.findUnique({ where: { id: SETTINGS_ID } });
     const settings = await prisma.siteSettings.upsert({
       where: { id: SETTINGS_ID },
-      create: { id: SETTINGS_ID, homepageSpotifyPlaylistUrl: data.homepageSpotifyPlaylistUrl ?? null },
-      update: { homepageSpotifyPlaylistUrl: data.homepageSpotifyPlaylistUrl ?? null },
+      create: {
+        id: SETTINGS_ID,
+        homepageSpotifyPlaylistUrl: data.homepageSpotifyPlaylistUrl ?? null,
+        adsEnabled: data.adsEnabled ?? false,
+      },
+      update: {
+        homepageSpotifyPlaylistUrl:
+          data.homepageSpotifyPlaylistUrl !== undefined ? data.homepageSpotifyPlaylistUrl : existing?.homepageSpotifyPlaylistUrl,
+        adsEnabled: data.adsEnabled !== undefined ? data.adsEnabled : existing?.adsEnabled,
+      },
     });
-    res.json({ settings: { homepageSpotifyPlaylistUrl: settings.homepageSpotifyPlaylistUrl } });
+    res.json({ settings: { homepageSpotifyPlaylistUrl: settings.homepageSpotifyPlaylistUrl, adsEnabled: settings.adsEnabled } });
   })
 );
