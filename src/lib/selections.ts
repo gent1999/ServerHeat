@@ -13,7 +13,7 @@ export const articleCardSelect = {
   featuredOrder: true,
   isTrending: true,
   isEditorsPick: true,
-  author: { select: { id: true, name: true, slug: true } },
+  author: { select: { id: true, name: true, slug: true, avatarUrl: true } },
   featuredImage: { select: { id: true, sourceUrl: true, altText: true } },
   articleCategories: {
     select: { isPrimary: true, category: { select: { id: true, name: true, slug: true } } },

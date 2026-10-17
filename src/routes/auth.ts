@@ -91,7 +91,15 @@ authRouter.get(
   requireAdminRole,
   asyncHandler(async (_req, res) => {
     const admins = await prisma.adminUser.findMany({
-      select: { id: true, email: true, name: true, role: true, createdAt: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+        authorId: true,
+        author: { select: { id: true, name: true, slug: true, avatarUrl: true } },
+      },
       orderBy: { createdAt: 'asc' },
     });
     res.json({ admins });
@@ -103,6 +111,11 @@ const updateAdminSchema = z.object({
   name: z.string().min(1).optional(),
   role: z.enum(['admin', 'editor']).optional(),
   password: z.string().min(8).optional(),
+  // Links this admin account to a byline Author -- set once, the first time
+  // a profile picture is added from the Users page (see updateUserAction in
+  // the frontend), so the picture lands on the Author row that articles
+  // actually reference, not on the login account itself.
+  authorId: z.coerce.number().int().nullable().optional(),
 });
 
 // PATCH /api/auth/admins/:id -- full-admin only.
@@ -138,8 +151,17 @@ authRouter.patch(
         ...(data.name !== undefined && { name: data.name }),
         ...(data.role !== undefined && { role: data.role }),
         ...(passwordHash !== undefined && { passwordHash }),
+        ...(data.authorId !== undefined && { authorId: data.authorId }),
       },
-      select: { id: true, email: true, name: true, role: true, createdAt: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+        authorId: true,
+        author: { select: { id: true, name: true, slug: true, avatarUrl: true } },
+      },
     });
 
     res.json({ admin });

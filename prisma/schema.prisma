@@ -40,6 +40,7 @@ model Author {
   slug      String   @unique
   email     String?
   bio       String?
+  avatarUrl String?  @map("avatar_url")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   articles   Article[]

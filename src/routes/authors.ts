@@ -42,3 +42,26 @@ authorsRouter.post(
     res.status(201).json({ author });
   })
 );
+
+const authorUpdateSchema = z.object({
+  name: z.string().min(1).optional(),
+  bio: z.string().trim().nullable().optional(),
+  avatarUrl: z.string().url().nullable().optional(),
+});
+
+// PUT /api/authors/:id -- admin only. Lets the admin Users page set a
+// byline's profile picture (and touch up name/bio) without going through
+// the article form's free-typed-name create flow.
+authorsRouter.put(
+  '/:id',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const id = BigInt(req.params.id);
+    const existing = await prisma.author.findUnique({ where: { id } });
+    if (!existing) throw new HttpError(404, 'Author not found');
+
+    const data = authorUpdateSchema.parse(req.body);
+    const author = await prisma.author.update({ where: { id }, data });
+    res.json({ author });
+  })
+);
