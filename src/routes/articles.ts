@@ -6,6 +6,7 @@ import { optionalAuth } from '../middleware/optional-auth';
 import { asyncHandler, HttpError } from '../middleware/error-handler';
 import { articleCardSelect, articleDetailSelect } from '../lib/selections';
 import { EDITORIAL_TYPES } from '../lib/editorial-types';
+import { plainTextExcerpt } from '../lib/text';
 
 // Who posted an article is admin-only intelligence (which teammate
 // published what) -- never exposed to anonymous/public requests.
@@ -166,7 +167,10 @@ articlesRouter.post(
       data: {
         title: data.title,
         slug: data.slug,
-        excerpt: data.excerpt ?? null,
+        // Editors almost never fill in the excerpt field by hand -- fall
+        // back to a plain-text preview of the body so cards that show an
+        // excerpt (e.g. the article page's related-reads rail) aren't blank.
+        excerpt: data.excerpt ?? plainTextExcerpt(data.content),
         content: data.content,
         status: data.status,
         authorId: data.authorId ?? null,
@@ -252,12 +256,18 @@ articlesRouter.put(
         });
       }
 
+      // Same auto-derive as create: only kicks in when content is being
+      // updated AND the excerpt is left blank, so it never clobbers an
+      // excerpt an editor deliberately typed.
+      const derivedExcerpt =
+        data.content !== undefined ? (data.excerpt ?? plainTextExcerpt(data.content)) : data.excerpt;
+
       return tx.article.update({
         where: { id },
         data: {
           ...(data.title !== undefined && { title: data.title }),
           ...(data.slug !== undefined && { slug: data.slug }),
-          ...(data.excerpt !== undefined && { excerpt: data.excerpt }),
+          ...(derivedExcerpt !== undefined && { excerpt: derivedExcerpt }),
           ...(data.content !== undefined && { content: data.content }),
           ...(data.status !== undefined && { status: data.status }),
           ...(data.authorId !== undefined && { authorId: data.authorId }),
