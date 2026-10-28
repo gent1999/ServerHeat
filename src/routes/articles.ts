@@ -29,6 +29,7 @@ const listQuerySchema = z.object({
   isTrending: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),
   isEditorsPick: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),
   editorialType: z.enum(EDITORIAL_TYPES).optional(),
+  q: z.string().trim().min(1).optional(),
 });
 
 // GET /api/articles -- public list. Anonymous callers only ever see
@@ -64,6 +65,12 @@ articlesRouter.get(
     }
     if (query.editorialType) {
       where.articleEditorialTypes = { some: { editorialType: query.editorialType } };
+    }
+    if (query.q) {
+      where.OR = [
+        { title: { contains: query.q, mode: 'insensitive' } },
+        { excerpt: { contains: query.q, mode: 'insensitive' } },
+      ];
     }
 
     const [total, articles] = await Promise.all([
